@@ -56,7 +56,7 @@ class Azure
             ];
 
             if (Route::has('azure.callback')) {
-                $form_params['redirect_uri'] = route('azure.callback');
+                $form_params['redirect_uri'] = str_replace("http:", "https:", route('azure.callback'));
             }
 
             $response = $client->request('POST', $this->baseUrl . config('azure.tenant_id') . $this->route . "token", [
@@ -146,16 +146,22 @@ class Azure
 
         $code = $request->input('code');
 
+        $options = [
+            'form_params' => [
+                'grant_type' => 'authorization_code',
+                'client_id' => config('azure.client.id'),
+                'client_secret' => config('azure.client.secret'),
+                'code' => $code,
+                'resource' => config('azure.resource'),
+            ]
+        ];
+
+        if (Route::has('azure.callback')) {
+            $options['form_params']['redirect_uri'] = str_replace("http:", "https:", route('azure.callback'));
+        }
+
         try {
-            $response = $client->request('POST', $this->baseUrl . config('azure.tenant_id') . $this->route . "token", [
-                'form_params' => [
-                    'grant_type' => 'authorization_code',
-                    'client_id' => config('azure.client.id'),
-                    'client_secret' => config('azure.client.secret'),
-                    'code' => $code,
-                    'resource' => config('azure.resource'),
-                ]
-            ]);
+            $response = $client->request('POST', $this->baseUrl . config('azure.tenant_id') . $this->route . "token", $options);
 
             $contents = json_decode($response->getBody()->getContents());
         } catch(RequestException $e) {
